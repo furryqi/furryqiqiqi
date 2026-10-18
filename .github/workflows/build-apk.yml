@@ -61,14 +61,19 @@ jobs:
             const fs = require('fs');
             const p = process.argv[1];
             let s = fs.readFileSync(p, 'utf8');
-            s = s.replace(/android:screenOrientation=\"[a-zA-Z]+\"/g, 'android:screenOrientation=\"sensorLandscape\"');
-            if (s.indexOf('android:screenOrientation') === -1) {
-              s = s.replace('<activity ', '<activity android:screenOrientation=\"sensorLandscape\" ');
+            if (/android:screenOrientation=\"[^\"]*\"/.test(s)) {
+              s = s.replace(/android:screenOrientation=\"[^\"]*\"/, 'android:screenOrientation=\"sensorLandscape\"');
+            } else {
+              s = s.replace(/<activity(\s)/, function (m, sp) {
+                return '<activity android:screenOrientation=\"sensorLandscape\"' + sp;
+              });
             }
             fs.writeFileSync(p, s);
-            console.log('screenOrientation 设置完成');
+            const ok = s.indexOf('sensorLandscape') !== -1;
+            console.log(ok ? '横屏已写入 manifest' : '横屏写入失败');
+            if (!ok) process.exit(1);
           " "$MANI"
-          grep -n "screenOrientation" "$MANI" || true
+          grep -n "screenOrientation" "$MANI"
       - name: 编译 APK
         working-directory: mobile/android
         run: |
