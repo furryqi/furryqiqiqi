@@ -1717,6 +1717,19 @@ body:has(.modal:not([hidden])) .acts {
   window.__MJ_IS_IOS = isIOS;
   window.__MJ_IS_ANDROID = isAndroid;
   window.__MJ_STANDALONE = standalone;
+  window.__MJ_IN_APP = /MicroMessenger|Weibo|DingTalk|AlipayClient/i.test(ua) || ua.indexOf('QQ/') !== -1;
+
+  // 提前接住安装事件（它可能比下载页脚本更早触发）
+  window.__MJ_BIP = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    window.__MJ_BIP = e;
+    document.documentElement.classList.add('mj-can-install');
+  });
+  window.addEventListener('appinstalled', function () {
+    document.documentElement.classList.add('mj-installed');
+  });
+
   if (showLanding) document.documentElement.classList.add('landing');
 })();
 </script>
@@ -1733,30 +1746,21 @@ body:has(.modal:not([hidden])) .acts {
 
     <div class="dl-card">
       <button class="dl-install" id="dlInstall">安 装 到 桌 面</button>
-      <div class="dl-status" id="dlStatus">点上面的按钮，装到手机桌面</div>
+      <div class="dl-status" id="dlStatus">装好后桌面会出现图标，点开即玩</div>
     </div>
 
-    <div class="dl-card" id="dlIos" style="display:none">
-      <h2>iPhone / iPad 安装方法</h2>
+    <div class="dl-card" id="dlInApp" style="display:none">
+      <h2 style="color:#ffb4a8">要在微信/QQ 里打开？装不了</h2>
       <div class="dl-tips">
-        <ol>
-          <li>点底部中间的 <b>分享</b> 按钮</li>
-          <li>下滑找到 <b>添加到主屏幕</b></li>
-          <li>右上角点 <b>添加</b></li>
-          <li>回桌面就有了麻将图标，点开即玩</li>
-        </ol>
+        内置浏览器不支持安装桌面图标。请点右上角 <b>···</b> →
+        <b>在浏览器打开</b>，再按下面的步骤安装。
       </div>
+      <a class="dl-link ghost" id="dlCopy" href="#" style="margin-top:10px">复制网址（粘贴到 Chrome / Safari）</a>
     </div>
 
-    <div class="dl-card" id="dlAnd" style="display:none">
-      <h2>Android 安装方法</h2>
-      <div class="dl-tips">
-        <ol>
-          <li>点上面的 <b>安装到桌面</b>，弹窗选 <b>安装</b></li>
-          <li>没弹窗的话：点浏览器右上角 <b>⋮</b></li>
-          <li>选 <b>安装应用</b> 或 <b>添加到主屏幕</b></li>
-        </ol>
-      </div>
+    <div class="dl-card" id="dlSteps">
+      <h2 id="dlStepsTitle">安装步骤</h2>
+      <div class="dl-tips" id="dlStepsBody"></div>
     </div>
 
     <div class="dl-card">
@@ -5435,24 +5439,123 @@ if (!document.documentElement.classList.contains('landing')) {
 <script>
 (function () {
   if (!document.documentElement.classList.contains('landing')) return;
-  var isIOS = window.__MJ_IS_IOS, isAndroid = window.__MJ_IS_ANDROID;
+
+  var isIOS = window.__MJ_IS_IOS;
+  var isAndroid = window.__MJ_IS_ANDROID;
+  var inApp = window.__MJ_IN_APP;
+
   var btn = document.getElementById('dlInstall');
   var status = document.getElementById('dlStatus');
-  var iosCard = document.getElementById('dlIos');
-  var andCard = document.getElementById('dlAnd');
+  var stepsBody = document.getElementById('dlStepsBody');
+  var stepsTitle = document.getElementById('dlStepsTitle');
+  var stepsCard = document.getElementById('dlSteps');
+  var inAppCard = document.getElementById('dlInApp');
+  var copyBtn = document.getElementById('dlCopy');
   var dlFile = document.getElementById('dlFile');
+  var deferred = window.__MJ_BIP;
 
-  var deferred = null;
+  // 按平台生成步骤（始终显示，不依赖安装事件）
+  var steps;
+  if (inApp) {
+    stepsTitle.textContent = '先在浏览器里打开';
+    steps = '<ol>' +
+      '<li>点右上角 <b>···</b></li>' +
+      '<li>选 <b>在浏览器打开</b></li>' +
+      '<li>在 Chrome / Safari 里再点安装</li>' +
+      '</ol>';
+    inAppCard.style.display = '';
+    status.textContent = '当前是微信/QQ 内置浏览器，无法安装';
+    status.className = 'dl-status warn';
+  } else if (isIOS) {
+    stepsTitle.textContent = 'iPhone 安装步骤';
+    steps = '<ol>' +
+      '<li>点底部中间的 <b>分享</b> 按钮（方框带箭头）</li>' +
+      '<li>下滑，选择 <b>添加到主屏幕</b></li>' +
+      '<li>右上角点 <b>添加</b></li>' +
+      '<li>回桌面就有了麻将图标</li>' +
+      '</ol>';
+    status.textContent = 'iOS 只能用「添加到主屏幕」，按下面 3 步即可';
+  } else if (isAndroid) {
+    stepsTitle.textContent = 'Android 安装步骤';
+    steps = '<ol>' +
+      '<li>点上面的 <b>安装到桌面</b> → 弹窗选 <b>安装</b></li>' +
+      '<li>没弹窗就点浏览器右上角 <b>⋮</b> 菜单</li>' +
+      '<li>选 <b>安装应用</b> 或 <b>添加到主屏幕</b></li>' +
+      '<li>回桌面就有了麻将图标</li>' +
+      '</ol>';
+    status.textContent = '点上面的按钮；没弹窗就按下面 3 步操作';
+  } else {
+    stepsTitle.textContent = '安装到桌面（电脑）';
+    steps = '<ol>' +
+      '<li>地址栏右侧点 <b>安装</b> 图标</li>' +
+      '<li>或菜单 → <b>应用</b> → <b>安装此站点</b></li>' +
+      '</ol>';
+  }
+  stepsBody.innerHTML = steps;
 
-  if (isIOS) { iosCard.style.display = ''; status.textContent = 'iOS 需要「添加到主屏幕」，看下面步骤'; }
-  else if (isAndroid) { andCard.style.display = ''; }
+  // 复制网址（微信里用得上）
+  copyBtn.addEventListener('click', function (ev) {
+    ev.preventDefault();
+    var url = location.origin + location.pathname;
+    function done() { status.textContent = '网址已复制，粘贴到 Chrome / Safari 打开'; status.className = 'dl-status'; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(done, function () { prompt('复制这个网址：', url); });
+    } else {
+      prompt('复制这个网址：', url);
+    }
+  });
 
-  // 下载按钮：把这个页面生成一份 Blob 存下来（比下载目录 URL 稳，文件名也准）
+  // 安装按钮
+  btn.addEventListener('click', function () {
+    if (inApp) {
+      status.textContent = '微信/QQ 里不能安装：点右上角 ··· → 在浏览器打开';
+      status.className = 'dl-status warn';
+      inAppCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (deferred) {
+      status.textContent = '正在唤起安装窗口…';
+      status.className = 'dl-status';
+      deferred.prompt();
+      deferred.userChoice.then(function (r) {
+        if (r.outcome === 'accepted') {
+          status.textContent = '正在安装，稍等，回桌面就能看到图标';
+        } else {
+          status.textContent = '已取消安装；也可以按下面的步骤手动添加';
+          status.className = 'dl-status warn';
+        }
+        deferred = null;
+        window.__MJ_BIP = null;
+      });
+      return;
+    }
+    // 没有安装事件：给明确反馈 + 滚到步骤
+    status.textContent = isIOS
+      ? 'iOS 请点底部「分享」→「添加到主屏幕」'
+      : (isAndroid ? '没弹出安装窗口，请按下面步骤手动添加' : '请用浏览器菜单里的「安装」');
+    status.className = 'dl-status warn';
+    stepsCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+
+  // 安装事件晚到时，更新提示
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferred = e;
+    window.__MJ_BIP = e;
+    if (!inApp) { status.textContent = '可以安装了，点上面的按钮'; status.className = 'dl-status'; }
+  });
+  window.addEventListener('appinstalled', function () {
+    status.textContent = '安装完成！回桌面看看麻将图标';
+    status.className = 'dl-status';
+    btn.disabled = true;
+    btn.textContent = '已 安 装';
+  });
+
+  // 下载按钮：用 Blob 生成完整单文件，文件名固定
   dlFile.setAttribute('href', '#');
   dlFile.addEventListener('click', function (ev) {
     ev.preventDefault();
-    var html = '<!DOCTYPE html>
-' + document.documentElement.outerHTML;
+    var html = '<!DOCTYPE html>' + String.fromCharCode(10) + document.documentElement.outerHTML;
     var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
@@ -5469,32 +5572,13 @@ if (!document.documentElement.classList.contains('landing')) {
       status.className = 'dl-status warn';
     }, 2500);
   });
-  window.addEventListener('beforeinstallprompt', function (e) {
-    e.preventDefault();
-    deferred = e;
-    status.textContent = '可以安装，点按钮即可';
-    status.className = 'dl-status';
-  });
-  window.addEventListener('appinstalled', function () {
-    status.textContent = '安装成功，回桌面看看图标吧';
-    btn.disabled = true;
-  });
 
-  btn.addEventListener('click', function () {
-    if (deferred) {
-      deferred.prompt();
-      deferred.userChoice.then(function (r) {
-        if (r.outcome === 'accepted') status.textContent = '正在安装…稍等，回桌面就能看到图标';
-        else { status.textContent = '已取消，也可以用下面的「添加到主屏幕」'; status.className = 'dl-status warn'; }
-        deferred = null;
-      });
-      return;
-    }
-    if (isIOS) { status.textContent = '点底部「分享」→「添加到主屏幕」'; }
-    else if (isAndroid) { status.textContent = '用浏览器菜单里的「安装应用 / 添加到主屏幕」'; }
-    else { status.textContent = '地址栏右侧有安装图标，或用浏览器菜单里的「安装」'; }
-    status.className = 'dl-status warn';
-  });
+  // 装成 App 之后，Service Worker 就绪时再踢一次安装判定
+  if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+    navigator.serviceWorker.ready.then(function (reg) {
+      if (reg && reg.update) reg.update();
+    }).catch(function () {});
+  }
 })();
 </script>
 
