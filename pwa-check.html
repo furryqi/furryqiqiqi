@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>PWA 自检</title>
+<style>
+body{font:13px/1.5 monospace;background:#0b1520;color:#dff;padding:14px;white-space:pre-wrap}
+.ok{color:#7ee787}.bad{color:#ff7b72}
+</style></head>
+<body>
+<div id="out">检查中…</div>
+<script>
+const out = document.getElementById('out');
+const lines = [];
+function log(ok, text) {
+  lines.push((ok ? '✔ ' : '✘ ') + text);
+  out.innerHTML = lines.map((s) => (s.startsWith('✔') ? '<span class="ok">' : '<span class="bad">') + s + '</span>').join('\n');
+}
+
+async function main() {
+  // 1. manifest
+  try {
+    const mf = await (await fetch('manifest.webmanifest')).json();
+    log(!!mf.name, 'manifest.name = ' + mf.name);
+    log(mf.display === 'standalone', 'manifest.display = ' + mf.display);
+    log(!!mf.start_url, 'manifest.start_url = ' + mf.start_url);
+    const sizes = (mf.icons || []).map((i) => i.sizes).join(',');
+    log(/192x192/.test(sizes) && /512x512/.test(sizes), 'icons = ' + sizes);
+  } catch (e) { log(false, 'manifest 读取失败: ' + e.message); }
+
+  // 2. service worker
+  if (!('serviceWorker' in navigator)) { log(false, '当前环境不支持 Service Worker'); return; }
+  try {
+    const reg = await navigator.serviceWorker.register('sw.js');
+    log(true, 'sw.js 注册成功，scope = ' + reg.scope);
+    await navigator.serviceWorker.ready;
+    log(true, 'Service Worker 已激活');
+  } catch (e) { log(false, 'SW 注册失败: ' + e.message); return; }
+
+  // 3. 缓存内容
+  await new Promise((r) => setTimeout(r, 1500));
+  const keys = await caches.keys();
+  log(keys.length > 0, 'Cache Storage: ' + keys.join(', '));
+  if (keys.length) {
+    const cache = await caches.open(keys[0]);
+    const reqs = await cache.keys();
+    log(reqs.length >= 5, '已缓存资源 ' + reqs.length + ' 项');
+    reqs.forEach((r) => lines.push('   · ' + r.url.replace(location.origin, '')));
+    out.innerHTML = lines.map((s) => (s.startsWith('✔') ? '<span class="ok">' : s.startsWith('✘') ? '<span class="bad">' : '<span>') + s + '</span>').join('\n');
+  }
+
+  // 4. 离线模拟：断网后从缓存取 index.html
+  try {
+    const res = await caches.match(new Request('index.html'));
+    log(!!res, 'index.html 可离线命中缓存');
+  } catch (e) { log(false, '离线命中测试失败: ' + e.message); }
+
+  lines.push('');
+  lines.push('自检完成，可以截图给开发者看。');
+  out.innerHTML = lines.map((s) => (s.startsWith('✔') ? '<span class="ok">' : s.startsWith('✘') ? '<span class="bad">' : '<span>') + s + '</span>').join('\n');
+}
+main();
+</script>
+</body></html>
