@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>双人麻将 · 下载 / 安装</title>
+<link rel="icon" type="image/png" href="icon-192.png" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#123a5e" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: radial-gradient(ellipse at 50% 0%, #2c6795 0%, #16374f 45%, #08131c 100%);
+    color: #eaf3fb;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    min-height: 100vh;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .wrap {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: max(28px, env(safe-area-inset-top)) 18px max(28px, env(safe-area-inset-bottom));
+  }
+  .head { text-align: center; margin-bottom: 22px; }
+  .logo {
+    width: 96px; height: 96px;
+    border-radius: 22px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .45), 0 0 0 1px rgba(232, 201, 106, .35) inset;
+    background: #0d2136;
+  }
+  h1 {
+    margin: 14px 0 6px;
+    font-size: 26px;
+    letter-spacing: 2px;
+    color: #ffe08a;
+  }
+  .sub { font-size: 13.5px; color: #9fc0d8; line-height: 1.7; }
+  .card {
+    background: linear-gradient(180deg, rgba(23, 58, 88, .92), rgba(12, 32, 50, .92));
+    border: 1px solid rgba(232, 201, 106, .22);
+    border-radius: 18px;
+    padding: 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .35);
+  }
+  .row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .row:last-child { margin-bottom: 0; }
+  .num {
+    flex: 0 0 auto;
+    width: 26px; height: 26px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 13px; font-weight: 700;
+    background: linear-gradient(#e8c96a, #c39a2c);
+    color: #3a2a08;
+  }
+  .row p { margin: 0; font-size: 14px; line-height: 1.6; color: #dbe9f5; }
+  .row p b { color: #ffe08a; }
+  button.main {
+    width: 100%;
+    border: 0;
+    border-radius: 16px;
+    padding: 18px 16px;
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #2a1c00;
+    background: linear-gradient(180deg, #ffe9a8 0%, #e2bd5c 55%, #bf9436 100%);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .4), inset 0 -3px 6px rgba(0, 0, 0, .18);
+    cursor: pointer;
+    font-family: inherit;
+  }
+  button.main:active { transform: translateY(1px); }
+  button.main:disabled { filter: grayscale(.5) brightness(.8); cursor: default; }
+  a.btn {
+    display: block;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 14px;
+    padding: 15px 16px;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #dff1ff;
+    background: linear-gradient(180deg, rgba(120, 190, 240, .35), rgba(50, 110, 165, .5));
+    border: 1px solid rgba(150, 210, 255, .45);
+    margin-top: 0;
+  }
+  a.btn.secondary {
+    color: #cfe2f2;
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid rgba(200, 230, 255, .25);
+    font-weight: 600;
+    font-size: 15px;
+    padding: 13px 16px;
+  }
+  .hint {
+    margin: 12px 0 0;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: #8fb9a4;
+  }
+  .hint b { color: #ffe08a; }
+  .status {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #7fd1a0;
+    min-height: 16px;
+  }
+  .status.warn { color: #ffc46b; }
+  .tips { font-size: 13px; line-height: 1.9; color: #c8ddec; }
+  .tips b { color: #ffe08a; }
+  .tips ol { margin: 6px 0 0; padding-left: 20px; }
+  h2 {
+    font-size: 14px;
+    margin: 0 0 10px;
+    color: #ffe08a;
+    letter-spacing: 1px;
+    font-weight: 700;
+  }
+  .foot { text-align: center; font-size: 11.5px; color: #6f92aa; margin-top: 18px; line-height: 1.8; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="head">
+    <img class="logo" src="icon-192.png" alt="双人麻将" onerror="this.style.display='none'" />
+    <h1>双人麻将 · 癞子万能</h1>
+    <div class="sub">癞子万能 · 花牌补花 · 梗番彩蛋<br />装上后全屏横屏运行，断网也能玩</div>
+  </div>
+
+  <div class="card">
+    <button class="main" id="installBtn">安 装 到 桌 面</button>
+    <div class="status" id="status"></div>
+    <p class="hint" id="installHint"></p>
+  </div>
+
+  <div class="card" id="iosCard" style="display:none">
+    <h2>iPhone / iPad 安装方法</h2>
+    <div class="tips">
+      <ol>
+        <li>点底部中间的 <b>分享</b> 按钮（方框带向上箭头）</li>
+        <li>在菜单里下滑，选 <b>添加到主屏幕</b></li>
+        <li>右上角点 <b>添加</b></li>
+        <li>回到桌面，就有了麻将图标，点开即玩</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="card" id="andCard" style="display:none">
+    <h2>Android 安装方法</h2>
+    <div class="tips">
+      <ol>
+        <li>点上面的 <b>安装到桌面</b> 按钮，弹窗里选 <b>安装</b></li>
+        <li>如果没弹窗：点浏览器右上角 <b>⋮</b> 菜单</li>
+        <li>选 <b>安装应用</b> 或 <b>添加到主屏幕</b></li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>也可以直接下载文件</h2>
+    <a class="btn secondary" id="dlBtn" href="game.html" download="双人麻将.html">下载游戏文件（.html，约 200KB）</a>
+    <p class="hint" id="dlHint">下载后可以用浏览器打开游玩，也可以发到电脑上玩。</p>
+  </div>
+
+  <div class="card">
+    <a class="btn" href="game.html">直接开始玩（不安装）</a>
+  </div>
+
+  <div class="foot">
+    安装需要 https 地址（当前已满足）<br />
+    数据只保存在你自己的设备上
+  </div>
+
+</div>
+
+<script>
+(function () {
+  var installBtn = document.getElementById('installBtn');
+  var statusEl = document.getElementById('status');
+  var hintEl = document.getElementById('installHint');
+  var iosCard = document.getElementById('iosCard');
+  var andCard = document.getElementById('andCard');
+  var dlBtn = document.getElementById('dlBtn');
+  var dlHint = document.getElementById('dlHint');
+
+  var ua = navigator.userAgent || '';
+  var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var isAndroid = /Android/.test(ua);
+  var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+                   window.navigator.standalone === true;
+
+  // 已经是安装版：直接给「打开」
+  if (standalone) {
+    installBtn.textContent = '已 安 装 · 打 开 游 戏';
+    installBtn.onclick = function () { location.href = 'index.html'; };
+    statusEl.textContent = '当前已经是桌面版运行';
+    hintEl.textContent = '';
+  }
+
+  if (!standalone) {
+    statusEl.textContent = '点上面的按钮，装到手机桌面';
+  }
+
+  var deferred = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferred = e;
+    statusEl.textContent = '可以安装，点按钮即可';
+    statusEl.className = 'status';
+  });
+
+  window.addEventListener('appinstalled', function () {
+    statusEl.textContent = '安装成功，回桌面看看有没有图标吧';
+    installBtn.disabled = true;
+  });
+
+  installBtn.addEventListener('click', function () {
+    if (standalone) { location.href = 'index.html'; return; }
+    if (deferred) {
+      deferred.prompt();
+      deferred.userChoice.then(function (res) {
+        if (res.outcome === 'accepted') {
+          statusEl.textContent = '正在安装…稍等，回桌面就能看到图标';
+        } else {
+          statusEl.textContent = '已取消安装';
+          statusEl.className = 'status warn';
+          showManual();
+        }
+        deferred = null;
+      });
+      return;
+    }
+    // 没有安装提示（iOS / 已安装 / 浏览器限制）
+    showManual();
+  });
+
+  function showManual() {
+    if (isIOS) {
+      iosCard.style.display = '';
+      andCard.style.display = 'none';
+      installBtn.textContent = '看下面的步骤添加图标';
+      statusEl.textContent = 'iOS 需要手动「添加到主屏幕」';
+      statusEl.className = 'status warn';
+    } else if (isAndroid) {
+      andCard.style.display = '';
+      statusEl.textContent = '用浏览器菜单里的「安装应用 / 添加到主屏幕」';
+      statusEl.className = 'status warn';
+    } else {
+      statusEl.textContent = '桌面浏览器：地址栏右侧有安装图标，或在菜单里选「安装」';
+      statusEl.className = 'status warn';
+      hintEl.textContent = '装好后会用独立窗口打开，像普通软件一样。';
+    }
+  }
+
+  if (isIOS) {
+    iosCard.style.display = '';
+    hintEl.textContent = 'iOS 只能用 Safari 的「添加到主屏幕」，点按钮看步骤。';
+  } else if (isAndroid && !standalone) {
+    andCard.style.display = '';
+  }
+
+  // 下载文件是否存在（不存在就把按钮藏起来，免得点出 404）
+  fetch('game.html', { method: 'HEAD' })
+    .then(function (r) {
+      if (!r.ok) throw new Error('missing');
+    })
+    .catch(function () {
+      dlBtn.classList.add('hidden');
+      dlHint.textContent = '仓库里还没有放「双人麻将-单文件版.html」，暂时不能下载文件，可以直接安装到桌面。';
+    });
+
+  // 顺便注册 Service Worker（离线缓存）
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+})();
+</script>
+</body>
+</html>

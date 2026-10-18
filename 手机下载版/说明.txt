@@ -1,0 +1,9 @@
+手机下载版
+
+index.html   下载 / 安装落地页（把这个网址发给手机）
+game.html    游戏本体（单文件，样式脚本全内联）
+manifest.webmanifest  PWA 清单（安装后直接打开 game.html，横屏）
+sw.js        离线缓存
+icon-192.png / icon-512.png  桌面图标
+
+部署：把这些文件全部上传到同一个目录即可（GitHub Pages / Netlify 都行）。
