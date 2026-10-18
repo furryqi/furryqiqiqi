@@ -1661,6 +1661,27 @@ body:has(.modal:not([hidden])) .acts {
   #landing .dl-tips b { color: #ffe08a; }
   #landing .dl-tips ol { margin: 4px 0 0; padding-left: 20px; }
   #landing .dl-foot { text-align: center; font-size: 11.5px; color: #6f92aa; margin-top: 16px; line-height: 1.8; }
+
+  /* ---- 竖屏时挡一层「请横屏」 ---- */
+  #rotateHint { display: none; }
+  @media (max-width: 900px) and (orientation: portrait) {
+    body.mj-need-landscape #rotateHint {
+      display: flex; position: fixed; inset: 0; z-index: 99998;
+      flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+      background: radial-gradient(ellipse at 50% 30%, #2c6795 0%, #16374f 55%, #08131c 100%);
+      color: #eaf3fb; text-align: center; padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    body.mj-need-landscape #app { display: none !important; }
+  }
+  #rotateHint .rh-icon { font-size: 54px; line-height: 1; transform: rotate(90deg); }
+  #rotateHint .rh-title { font-size: 21px; font-weight: 800; letter-spacing: 2px; color: #ffe08a; }
+  #rotateHint .rh-text { font-size: 14px; color: #bcd6e8; line-height: 1.8; }
+  #rotateHint .rh-btn {
+    margin-top: 6px; border: 1px solid rgba(200, 230, 255, .35);
+    background: rgba(255, 255, 255, .08); color: #dff1ff;
+    border-radius: 12px; padding: 10px 18px; font-size: 14px; font-family: inherit;
+  }
 </style>
 
 <script>
@@ -1676,6 +1697,22 @@ body:has(.modal:not([hidden])) .acts {
   var forcePlay = /[?&]play=1/.test(location.search);
   var forceLanding = /[?&]landing=1/.test(location.search);
   var showLanding = forceLanding || (mobile && !standalone && !isFile && !forcePlay);
+
+  // 自救开关：?nosw=1 一次性注销旧 Service Worker 并清空缓存
+  if (/[?&]nosw=1/.test(location.search)) {
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+        navigator.serviceWorker.getRegistrations().then(function (rs) {
+          rs.forEach(function (r) { r.unregister(); });
+        });
+      }
+      if (window.caches && caches.keys) {
+        caches.keys().then(function (ks) {
+          ks.forEach(function (k) { caches.delete(k); });
+        });
+      }
+    } catch (e) {}
+  }
 
   window.__MJ_IS_IOS = isIOS;
   window.__MJ_IS_ANDROID = isAndroid;
@@ -1724,15 +1761,22 @@ body:has(.modal:not([hidden])) .acts {
 
     <div class="dl-card">
       <a class="dl-link ghost" id="dlFile" href="#" download="双人麻将.html">下载游戏文件（.html，约 200KB）</a>
-      <div class="dl-foot" style="margin-top:8px">下载后可直接用浏览器打开，也能发到电脑上玩</div>
-    </div>
-
-    <div class="dl-card">
-      <a class="dl-link" id="dlPlay" href="#">直接开始玩（不安装）</a>
+      <div class="dl-foot" style="margin-top:8px;text-align:left">
+        下载得到一个 <b>双人麻将.html</b>，双击/点开就能玩（电脑上是双击；手机上要用
+        <b>Firefox / 夸克 / Edge</b> 这类允许打开本地网页的浏览器，Chrome 会拒绝打开本地文件）。
+        也可以发到电脑上玩。
+      </div>
     </div>
 
     <div class="dl-foot">数据只保存在你自己的设备上 · 不需要联网对战</div>
   </div>
+</div>
+
+<div id="rotateHint">
+  <div class="rh-icon">📱</div>
+  <div class="rh-title">请把手机横过来</div>
+  <div class="rh-text">这个游戏是横屏操作的<br />横过来后会自动进入牌桌</div>
+  <button class="rh-btn" id="rhIgnore">继续竖屏游玩</button>
 </div>
 
 <div id="app">
@@ -5333,7 +5377,35 @@ if (!document.documentElement.classList.contains('landing')) {
   if (typeof navigator !== 'undefined' && navigator.serviceWorker &&
       typeof location !== 'undefined' && location.protocol.indexOf('http') === 0) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(() => { /* 忽略 */ });
+      navigator.serviceWorker.register('sw.js').then((reg) => {
+        // 有新版本就让它立刻接管，并在接管后刷新一次页面
+        if (reg.waiting) reg.waiting.postMessage('skip-waiting');
+        reg.addEventListener('updatefound', () => {
+          const sw = reg.installing;
+          if (!sw) return;
+          sw.addEventListener('statechange', () => {
+            if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+              sw.postMessage('skip-waiting');
+            }
+          });
+        });
+        // 顺手清理旧缓存（旧版 sw 缓存优先会一直喂旧页面）
+        if (typeof caches !== 'undefined') {
+          caches.keys().then((keys) => {
+            keys.forEach((k) => {
+              if (k !== 'mj2p-v4') caches.delete(k).catch(() => {});
+            });
+          }).catch(() => {});
+        }
+        try { reg.update(); } catch (e) { /* 忽略 */ }
+
+        let reloaded = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (reloaded) return;
+          reloaded = true;
+          location.reload();
+        });
+      }).catch(() => { /* 忽略 */ });
     });
   }
 
@@ -5369,19 +5441,34 @@ if (!document.documentElement.classList.contains('landing')) {
   var iosCard = document.getElementById('dlIos');
   var andCard = document.getElementById('dlAnd');
   var dlFile = document.getElementById('dlFile');
-  var dlPlay = document.getElementById('dlPlay');
+
   var deferred = null;
 
   if (isIOS) { iosCard.style.display = ''; status.textContent = 'iOS 需要「添加到主屏幕」，看下面步骤'; }
   else if (isAndroid) { andCard.style.display = ''; }
 
-  // 下载按钮：把当前这个 html 原样保存
-  dlFile.href = location.pathname;
-  dlPlay.addEventListener('click', function (ev) {
+  // 下载按钮：把这个页面生成一份 Blob 存下来（比下载目录 URL 稳，文件名也准）
+  dlFile.setAttribute('href', '#');
+  dlFile.addEventListener('click', function (ev) {
     ev.preventDefault();
-    location.href = location.pathname + '?play=1';
+    var html = '<!DOCTYPE html>
+' + document.documentElement.outerHTML;
+    var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '双人麻将.html';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+    status.textContent = '已开始下载「双人麻将.html」';
+    status.className = 'dl-status';
+    setTimeout(function () {
+      status.textContent = '下载后请用 Firefox / 夸克 / Edge 打开（Chrome 不允许打开本地网页）';
+      status.className = 'dl-status warn';
+    }, 2500);
   });
-
   window.addEventListener('beforeinstallprompt', function (e) {
     e.preventDefault();
     deferred = e;
@@ -5407,6 +5494,34 @@ if (!document.documentElement.classList.contains('landing')) {
     else if (isAndroid) { status.textContent = '用浏览器菜单里的「安装应用 / 添加到主屏幕」'; }
     else { status.textContent = '地址栏右侧有安装图标，或用浏览器菜单里的「安装」'; }
     status.className = 'dl-status warn';
+  });
+})();
+</script>
+
+<script>
+(function () {
+  var ua = navigator.userAgent || '';
+  var mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+  var isFile = location.protocol === 'file:';
+  var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+    window.navigator.standalone === true;
+  var force = /[?&]rotate=1/.test(location.search);
+  // 只在「打开本地文件」或「装成 App」时强制横屏；网页版桌面/手机不受影响
+  if (!(mobile && (isFile || standalone)) && !force) return;
+
+  var body = document.body;
+  function check() {
+    if (body.classList.contains('mj-ignore-rotate')) return;
+    var portrait = window.innerHeight > window.innerWidth;
+    body.classList.toggle('mj-need-landscape', portrait);
+  }
+  check();
+  window.addEventListener('resize', check);
+  window.addEventListener('orientationchange', function () { setTimeout(check, 120); });
+  var btn = document.getElementById('rhIgnore');
+  if (btn) btn.addEventListener('click', function () {
+    body.classList.add('mj-ignore-rotate');
+    body.classList.remove('mj-need-landscape');
   });
 })();
 </script>
