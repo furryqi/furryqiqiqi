@@ -7,6 +7,8 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: 取代码
         uses: actions/checkout@v4
@@ -19,22 +21,19 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: 装 Android SDK
-        uses: android-actions/setup-android@v3
-      - name: 安装 SDK 平台
+      - name: 检查 Android SDK
         run: |
-          sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "platform-tools" || true
-          yes | sdkmanager --licenses || true
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          ls "$ANDROID_HOME" || true
+          which sdkmanager || true
       - name: 准备网页资源
         run: |
+          set -e
           mkdir -p mobile/www
-          cp index.html mobile/www/ 2>/dev/null || true
+          cp index.html mobile/www/index.html
           cp -r css js mobile/www/ 2>/dev/null || true
           cp icon-192.png icon-512.png manifest.webmanifest sw.js mobile/www/ 2>/dev/null || true
-          if [ ! -f mobile/www/index.html ]; then
-            cp "双人麻将-单文件版.html" mobile/www/index.html 2>/dev/null || true
-          fi
-          # APK 里不需要下载页，直接进游戏
           if grep -q 'id="landing"' mobile/www/index.html; then
             node -e "
               const fs = require('fs');
@@ -46,12 +45,13 @@ jobs:
             "
           fi
           ls -la mobile/www
-      - name: 安装 Capacitor
-        working-directory: mobile
-        run: npm install --no-audit --no-fund
-      - name: 生成安卓工程
+      - name: 安装 Capacitor 并生成安卓工程
         working-directory: mobile
         run: |
+          set -e
+          npm init -y
+          npm install --no-audit --no-fund @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+          npx cap init "双人麻将" "com.mahjong.two" --web-dir=www
           npx cap add android
           npx cap sync android
       - name: 设置横屏
@@ -66,7 +66,7 @@ jobs:
               s = s.replace('<activity ', '<activity android:screenOrientation=\"sensorLandscape\" ');
             }
             fs.writeFileSync(p, s);
-            console.log(s.split('\n').slice(0, 40).join('\n'));
+            console.log('screenOrientation 设置完成');
           " "$MANI"
           grep -n "screenOrientation" "$MANI" || true
       - name: 编译 APK
@@ -82,6 +82,7 @@ jobs:
           if-no-files-found: error
       - name: 发布 Release
         if: github.ref == 'refs/heads/main'
+        continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: apk-${{ github.run_number }}
