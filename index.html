@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<title>双人麻将 · 癞子万能</title>
+<link rel="icon" type="image/png" href="icon-192.png" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#123a5e" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="mobile-web-app-capable" content="yes" />
+<link rel="stylesheet" href="css/style.css?v=20270519" />
+</head>
+<body>
+<div id="app">
+
+  <!-- ───────────────────────── 顶栏 ───────────────────────── -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">双人麻将</span>
+    </div>
+    <div class="roundinfo">
+      <span id="roundNo">第 1 局</span>
+      <i>·</i>
+      <span id="dealerInfo">你坐庄</span>
+      <i>·</i>
+      <span id="wallInfo">牌墙 45 张</span>
+      <span id="streakInfo" class="streak" hidden></span>
+    </div>
+    <div class="topbtns">
+      <button id="btnSet" class="ghost">设置</button>
+      <button id="btnRules" class="ghost">番表 / 规则</button>
+      <button id="btnNew" class="ghost">重新开始</button>
+    </div>
+  </header>
+
+  <!-- ───────────────────────── 牌桌 ───────────────────────── -->
+  <main class="table">
+
+    <!-- 对手 -->
+    <section class="seat seat-opp">
+      <div class="seat-head">
+        <span class="avatar opp">对</span>
+        <span class="pname">电脑</span>
+        <span class="pscore" id="scoreOpp">20000</span>
+        <span class="badge" id="riichiOpp" hidden>报听</span>
+        <span class="badge bonus" id="bonusOpp" hidden>癞子 ×2</span>
+      </div>
+      <div class="handline">
+        <div class="backs" id="handOpp"></div>
+      </div>
+    </section>
+
+    <!-- 中间：牌河 -->
+    <section class="center">
+      <div class="tablecenter">
+        <div class="riverrow" id="riverrowOpp">
+          <span class="rlabel" id="rlabelOpp">电脑</span>
+          <div class="river" id="riverOpp"></div>
+          <div class="jokertray" id="jokerOpp" hidden></div>
+          <div class="meldside" id="meldsOpp"></div>
+          <div class="flowers in-river" id="flowersOpp"></div>
+        </div>
+
+        <div class="midline">
+          <div class="lastev" id="lastev"></div>
+          <div class="hint" id="hint"></div>
+        </div>
+
+        <div class="riverrow">
+          <span class="rlabel">我</span>
+          <div class="river mine" id="riverMe"></div>
+          <div class="jokertray" id="jokerMe" hidden></div>
+          <div class="meldside" id="meldsMe"></div>
+          <div class="flowers in-river" id="flowersMe"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 自己 -->
+    <section class="seat seat-me">
+      <div class="handline">
+        <div class="hand" id="handMe"></div>
+      </div>
+      <div class="seat-head">
+        <span class="avatar me">我</span>
+        <span class="pscore" id="scoreMe">20000</span>
+        <span class="badge" id="riichiMe" hidden>报听</span>
+        <span class="badge bonus" id="bonusMe" hidden>癞子 ×2</span>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 听牌标记（界面右侧） -->
+  <span class="waits" id="waitsMe" hidden></span>
+
+  <!-- ───────────────────────── 操作栏 ───────────────────────── -->
+  <footer class="actionbar">
+    <div class="status" id="status">点击牌面出牌</div>
+    <div class="acts" id="acts"></div>
+  </footer>
+
+</div>
+
+<!-- ───────────────────────── 结算弹窗 ───────────────────────── -->
+<div class="modal" id="modal" hidden>
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitle">和牌</div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+
+<!-- ───────────────────────── 设置弹窗 ───────────────────────── -->
+<div class="modal" id="setModal" hidden>
+  <div class="modal-box">
+    <div class="modal-title">对局设置</div>
+    <div class="modal-body">
+      <div class="setrow">
+        <span>起胡番数</span>
+        <input type="number" id="setMinFan" min="1" max="30" step="1" />
+        <em>番数不足不能胡（整手无癞子时自动减半）</em>
+      </div>
+      <div class="setrow">
+        <span>局数</span>
+        <select id="setRounds">
+          <option value="4">4 局</option>
+          <option value="8">8 局</option>
+        </select>
+        <em>打满即结束对局</em>
+      </div>
+      <div class="setrow">
+        <span>起始分数</span>
+        <input type="number" id="setScore" min="1000" max="1000000" step="1000" />
+        <em>任一方降到 0 以下立即结束</em>
+      </div>
+      <div class="setrow">
+        <span>封顶分</span>
+        <input type="number" id="setCap" min="0" max="1000000" step="1000" value="30000" />
+        <em>每局得分不超过这个数（0 = 不封顶）</em>
+      </div>
+      <div class="setrow">
+        <span>癞子张数</span>
+        <select id="jokerSel">
+          <option value="4">4 张</option>
+          <option value="8">8 张</option>
+          <option value="12">12 张</option>
+          <option value="16">16 张</option>
+          <option value="0">不设癞子</option>
+        </select>
+        <em>牌库里放几张万能牌（0 / 4 / 8 / 12 / 16）</em>
+      </div>
+      <div class="setrow">
+        <span>测试模式</span>
+        <label class="chk"><input type="checkbox" id="testMode" /><b>开启</b></label>
+        <em>只有你摸牌打牌，对手不动</em>
+      </div>
+      <div class="setrow">
+        <span>报听看牌</span>
+        <label class="chk"><input type="checkbox" id="setReveal" /><b>开启</b></label>
+        <em>报听后亮出对手手牌</em>
+      </div>
+      <div class="setrow">
+        <span>梗番</span>
+        <label class="chk"><input type="checkbox" id="setMeme" /><b>允许</b></label>
+        <em>允许出现「1145141919810」这类彩蛋番</em>
+      </div>
+      <div class="setrow">
+        <span>透视</span>
+        <label class="chk"><input type="checkbox" id="peekMode" /><b>开启</b></label>
+        <em>能看到对手的手牌，其他规则不变</em>
+      </div>
+      <p class="setnote">选项改动会立即生效；「应用并重开」会按新设置重开一场对局。</p>
+    </div>
+    <div class="modal-foot">
+      <button class="primary" id="setApply">应用并重开</button>
+      <button class="ghost" id="setClose">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────────────── 番表弹窗 ───────────────────────── -->
+<div class="modal" id="rulesModal" hidden>
+  <div class="modal-box wide">
+    <div class="modal-title">规则与番种表</div>
+    <div class="modal-body rules" id="rulesBody"></div>
+    <div class="modal-foot">
+      <button class="primary" id="rulesClose">知道了</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/engine.js?v=20270519"></script>
+<script src="js/game.js?v=20270519"></script>
+<script src="js/ai.js?v=20270519"></script>
+<script src="js/ui.js?v=20270519"></script>
+</body>
+</html>
