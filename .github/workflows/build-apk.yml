@@ -1,0 +1,92 @@
+name: 打包安卓 APK
+# 手动运行：仓库 → Actions → 打包安卓 APK → Run workflow
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 取代码
+        uses: actions/checkout@v4
+      - name: 装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: 装 Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: 装 Android SDK
+        uses: android-actions/setup-android@v3
+      - name: 安装 SDK 平台
+        run: |
+          sdkmanager --install "platforms;android-34" "build-tools;34.0.0" "platform-tools" || true
+          yes | sdkmanager --licenses || true
+      - name: 准备网页资源
+        run: |
+          mkdir -p mobile/www
+          cp index.html mobile/www/ 2>/dev/null || true
+          cp -r css js mobile/www/ 2>/dev/null || true
+          cp icon-192.png icon-512.png manifest.webmanifest sw.js mobile/www/ 2>/dev/null || true
+          if [ ! -f mobile/www/index.html ]; then
+            cp "双人麻将-单文件版.html" mobile/www/index.html 2>/dev/null || true
+          fi
+          # APK 里不需要下载页，直接进游戏
+          if grep -q 'id="landing"' mobile/www/index.html; then
+            node -e "
+              const fs = require('fs');
+              const p = 'mobile/www/index.html';
+              let s = fs.readFileSync(p, 'utf8');
+              s = s.replace(/var showLanding = [^;]+;/, 'var showLanding = false;');
+              fs.writeFileSync(p, s);
+              console.log('已关闭 APK 内的下载页');
+            "
+          fi
+          ls -la mobile/www
+      - name: 安装 Capacitor
+        working-directory: mobile
+        run: npm install --no-audit --no-fund
+      - name: 生成安卓工程
+        working-directory: mobile
+        run: |
+          npx cap add android
+          npx cap sync android
+      - name: 设置横屏
+        run: |
+          MANI="mobile/android/app/src/main/AndroidManifest.xml"
+          node -e "
+            const fs = require('fs');
+            const p = process.argv[1];
+            let s = fs.readFileSync(p, 'utf8');
+            s = s.replace(/android:screenOrientation=\"[a-zA-Z]+\"/g, 'android:screenOrientation=\"sensorLandscape\"');
+            if (s.indexOf('android:screenOrientation') === -1) {
+              s = s.replace('<activity ', '<activity android:screenOrientation=\"sensorLandscape\" ');
+            }
+            fs.writeFileSync(p, s);
+            console.log(s.split('\n').slice(0, 40).join('\n'));
+          " "$MANI"
+          grep -n "screenOrientation" "$MANI" || true
+      - name: 编译 APK
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: 上传 APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: 双人麻将-APK
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+      - name: 发布 Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-${{ github.run_number }}
+          name: 双人麻将 APK #${{ github.run_number }}
+          files: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
