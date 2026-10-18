@@ -1606,6 +1606,75 @@ body:has(.modal:not([hidden])) .acts {
   .handline .meldside .tile.joker .wtag { display: none; }
 }
 
+/* ==========================================================================
+ *  副露与手牌/牌背「同尺寸」：左右两侧牌必须一样大
+ * ========================================================================*/
+.handline {
+  --meld-tw: 62px;
+  --meld-th: 82px;
+}
+.seat-opp .handline { --meld-tw: 62px; --meld-th: 82px; }
+.seat-me .handline  { --meld-tw: 62px; --meld-th: 82px; }
+
+.handline .meldside .tile {
+  --tw: var(--meld-tw);
+  --th: var(--meld-th);
+  margin: 0;
+}
+.handline .meldside .meld { gap: 2px; }
+
+/* 竖屏手机：我的副露跟手牌一样 40×54，电脑副露跟牌背一样 25×34 */
+@media (max-width: 760px) and (orientation: portrait) {
+  .seat-me .handline  { --meld-tw: 40px; --meld-th: 54px; }
+  .seat-opp .handline { --meld-tw: 25px; --meld-th: 34px; }
+  .handline .meldside .tile .rank,
+  .handline .meldside .tile .honor,
+  .handline .meldside .tile .fl { font-size: 18px; }
+  .handline .meldside .tile .suit { font-size: 13px; }
+  .seat-opp .meldside .tile .rank,
+  .seat-opp .meldside .tile .honor,
+  .seat-opp .meldside .tile .fl { font-size: 11px; }
+  .seat-opp .meldside .tile .suit { font-size: 8px; }
+}
+
+/* 横屏手机（矮屏）：我的副露 34×46，电脑副露 22×30 */
+@media (orientation: landscape) and (max-height: 560px) {
+  .seat-me .handline  { --meld-tw: 34px; --meld-th: 46px; }
+  .seat-opp .handline { --meld-tw: 22px; --meld-th: 30px; }
+  .handline .meldside .tile .rank,
+  .handline .meldside .tile .honor,
+  .handline .meldside .tile .fl { font-size: 16px; }
+  .handline .meldside .tile .suit { font-size: 12px; }
+  .seat-opp .meldside .tile .rank,
+  .seat-opp .meldside .tile .honor,
+  .seat-opp .meldside .tile .fl { font-size: 11px; }
+  .seat-opp .meldside .tile .suit { font-size: 8px; }
+  .handline .meldside .tile.joker .wtag { display: none; }
+}
+
+/* 铺满整屏：任何情况下都填满视口，且不会露出底色 */
+html, body {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  background: #0c2236;
+  overscroll-behavior: none;
+}
+#app {
+  width: 100%;
+  min-height: 100dvh;
+}
+
+/* 横屏时避开刘海/挖孔：内容不压到摄像头区域 */
+@media (orientation: landscape) {
+  #app {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+}
+
 </style>
 
 <style>
@@ -1764,11 +1833,19 @@ body:has(.modal:not([hidden])) .acts {
     </div>
 
     <div class="dl-card">
-      <a class="dl-link ghost" id="dlFile" href="#" download="双人麻将.html">下载游戏文件（.html，约 200KB）</a>
+      <h2>安卓安装包</h2>
+      <a class="dl-link" id="dlApk" href="app-debug.apk" download>下载 APK（约 4MB，安装后桌面有图标）</a>
       <div class="dl-foot" style="margin-top:8px;text-align:left">
-        下载得到一个 <b>双人麻将.html</b>，双击/点开就能玩（电脑上是双击；手机上要用
-        <b>Firefox / 夸克 / Edge</b> 这类允许打开本地网页的浏览器，Chrome 会拒绝打开本地文件）。
-        也可以发到电脑上玩。
+        点开装上，弹出「未知来源」时允许一次即可。
+        装好后是独立 App，不是浏览器，断网也能玩。
+      </div>
+    </div>
+
+    <div class="dl-card">
+      <a class="dl-link ghost" id="dlFile" href="#" download="双人麻将.html">下载网页版文件（.html，约 200KB）</a>
+      <div class="dl-foot" style="margin-top:8px;text-align:left">
+        下载得到 <b>双人麻将.html</b>：电脑上双击就能玩；
+        手机上需要 <b>Firefox / 夸克 / Edge</b> 这类允许打开本地网页的浏览器（Chrome 会拒绝）。
       </div>
     </div>
 
@@ -5550,6 +5627,18 @@ if (!document.documentElement.classList.contains('landing')) {
     btn.disabled = true;
     btn.textContent = '已 安 装';
   });
+
+  // APK 不在仓库里就隐藏按钮（免得点出 404）
+  var apkBtn = document.getElementById('dlApk');
+  fetch('app-debug.apk', { method: 'HEAD' })
+    .then(function (r) { if (!r.ok) throw new Error('404'); })
+    .catch(function () {
+      if (apkBtn) {
+        apkBtn.style.display = 'none';
+        var tip = apkBtn.nextElementSibling;
+        if (tip) tip.textContent = 'APK 还没上传到仓库，先用下面的网页版或直接安装到桌面。';
+      }
+    });
 
   // 下载按钮：用 Blob 生成完整单文件，文件名固定
   dlFile.setAttribute('href', '#');
