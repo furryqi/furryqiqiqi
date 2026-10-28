@@ -3,7 +3,19 @@ const path = require('path');
 const ROOT = __dirname;
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
-let html = read('index.html');
+let html = read(fs.existsSync(path.join(ROOT, '游戏源.html')) ? '游戏源.html' : 'index.html');
+if (html.indexOf('id="landing"') !== -1) {
+  console.error('✗ index.html 里已经含下载页，先还原成拆分版再构建（否则会重复插入）');
+  process.exit(1);
+}
+if (html.indexOf('href="css/style.css') === -1) {
+  console.error('✗ index.html 不像拆分版（缺少外链 css），请检查');
+  process.exit(1);
+}
+if (html.indexOf('id="btnStart"') === -1) {
+  console.error('✗ 源文件里没有开始页（id="btnStart"），构建会丢掉开始页');
+  process.exit(1);
+}
 
 /* ---------- 1) 内联 CSS ---------- */
 html = html.replace(/<link rel="stylesheet" href="([^"?]+)(\?[^"]*)?"\s*\/?>/g, (m, href) => (
@@ -71,6 +83,27 @@ const landingCss = `
   #landing .dl-tips b { color: #ffe08a; }
   #landing .dl-tips ol { margin: 4px 0 0; padding-left: 20px; }
   #landing .dl-foot { text-align: center; font-size: 11.5px; color: #6f92aa; margin-top: 16px; line-height: 1.8; }
+
+  /* ---- 竖屏时挡一层「请横屏」 ---- */
+  #rotateHint { display: none; }
+  @media (max-width: 900px) and (orientation: portrait) {
+    body.mj-need-landscape #rotateHint {
+      display: flex; position: fixed; inset: 0; z-index: 99998;
+      flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+      background: radial-gradient(ellipse at 50% 30%, #2c6795 0%, #16374f 55%, #08131c 100%);
+      color: #eaf3fb; text-align: center; padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    body.mj-need-landscape #app { display: none !important; }
+  }
+  #rotateHint .rh-icon { font-size: 54px; line-height: 1; transform: rotate(90deg); }
+  #rotateHint .rh-title { font-size: 21px; font-weight: 800; letter-spacing: 2px; color: #ffe08a; }
+  #rotateHint .rh-text { font-size: 14px; color: #bcd6e8; line-height: 1.8; }
+  #rotateHint .rh-btn {
+    margin-top: 6px; border: 1px solid rgba(200, 230, 255, .35);
+    background: rgba(255, 255, 255, .08); color: #dff1ff;
+    border-radius: 12px; padding: 10px 18px; font-size: 14px; font-family: inherit;
+  }
 </style>
 `;
 
@@ -86,39 +119,38 @@ const landingHtml = `
 
     <div class="dl-card">
       <button class="dl-install" id="dlInstall">安 装 到 桌 面</button>
-      <div class="dl-status" id="dlStatus">点上面的按钮，装到手机桌面</div>
+      <div class="dl-status" id="dlStatus">装好后桌面会出现图标，点开即玩</div>
     </div>
 
-    <div class="dl-card" id="dlIos" style="display:none">
-      <h2>iPhone / iPad 安装方法</h2>
+    <div class="dl-card" id="dlInApp" style="display:none">
+      <h2 style="color:#ffb4a8">要在微信/QQ 里打开？装不了</h2>
       <div class="dl-tips">
-        <ol>
-          <li>点底部中间的 <b>分享</b> 按钮</li>
-          <li>下滑找到 <b>添加到主屏幕</b></li>
-          <li>右上角点 <b>添加</b></li>
-          <li>回桌面就有了麻将图标，点开即玩</li>
-        </ol>
+        内置浏览器不支持安装桌面图标。请点右上角 <b>···</b> →
+        <b>在浏览器打开</b>，再按下面的步骤安装。
       </div>
+      <a class="dl-link ghost" id="dlCopy" href="#" style="margin-top:10px">复制网址（粘贴到 Chrome / Safari）</a>
     </div>
 
-    <div class="dl-card" id="dlAnd" style="display:none">
-      <h2>Android 安装方法</h2>
-      <div class="dl-tips">
-        <ol>
-          <li>点上面的 <b>安装到桌面</b>，弹窗选 <b>安装</b></li>
-          <li>没弹窗的话：点浏览器右上角 <b>⋮</b></li>
-          <li>选 <b>安装应用</b> 或 <b>添加到主屏幕</b></li>
-        </ol>
+    <div class="dl-card" id="dlSteps">
+      <h2 id="dlStepsTitle">安装步骤</h2>
+      <div class="dl-tips" id="dlStepsBody"></div>
+    </div>
+
+    <div class="dl-card">
+      <h2>安卓安装包</h2>
+      <a class="dl-link" id="dlApk" href="app-debug.apk" download>下载 APK（约 4MB，安装后桌面有图标）</a>
+      <div class="dl-foot" style="margin-top:8px;text-align:left">
+        点开装上，弹出「未知来源」时允许一次即可。
+        装好后是独立 App，不是浏览器，断网也能玩。
       </div>
     </div>
 
     <div class="dl-card">
-      <a class="dl-link ghost" id="dlFile" href="#" download="双人麻将.html">下载游戏文件（.html，约 200KB）</a>
-      <div class="dl-foot" style="margin-top:8px">下载后可直接用浏览器打开，也能发到电脑上玩</div>
-    </div>
-
-    <div class="dl-card">
-      <a class="dl-link" id="dlPlay" href="#">直接开始玩（不安装）</a>
+      <a class="dl-link ghost" id="dlFile" href="#" download="双人麻将.html">下载网页版文件（.html，约 200KB）</a>
+      <div class="dl-foot" style="margin-top:8px;text-align:left">
+        下载得到 <b>双人麻将.html</b>：电脑上双击就能玩；
+        手机上需要 <b>Firefox / 夸克 / Edge</b> 这类允许打开本地网页的浏览器（Chrome 会拒绝）。
+      </div>
     </div>
 
     <div class="dl-foot">数据只保存在你自己的设备上 · 不需要联网对战</div>
@@ -142,9 +174,38 @@ const decideScript = `
   var forceLanding = /[?&]landing=1/.test(location.search);
   var showLanding = forceLanding || (mobile && !standalone && !isFile && !forcePlay);
 
+  // 自救开关：?nosw=1 一次性注销旧 Service Worker 并清空缓存
+  if (/[?&]nosw=1/.test(location.search)) {
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+        navigator.serviceWorker.getRegistrations().then(function (rs) {
+          rs.forEach(function (r) { r.unregister(); });
+        });
+      }
+      if (window.caches && caches.keys) {
+        caches.keys().then(function (ks) {
+          ks.forEach(function (k) { caches.delete(k); });
+        });
+      }
+    } catch (e) {}
+  }
+
   window.__MJ_IS_IOS = isIOS;
   window.__MJ_IS_ANDROID = isAndroid;
   window.__MJ_STANDALONE = standalone;
+  window.__MJ_IN_APP = /MicroMessenger|Weibo|DingTalk|AlipayClient/i.test(ua) || ua.indexOf('QQ/') !== -1;
+
+  // 提前接住安装事件（它可能比下载页脚本更早触发）
+  window.__MJ_BIP = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    window.__MJ_BIP = e;
+    document.documentElement.classList.add('mj-can-install');
+  });
+  window.addEventListener('appinstalled', function () {
+    document.documentElement.classList.add('mj-installed');
+  });
+
   if (showLanding) document.documentElement.classList.add('landing');
 })();
 </script>
@@ -155,66 +216,210 @@ const landingJs = `
 <script>
 (function () {
   if (!document.documentElement.classList.contains('landing')) return;
-  var isIOS = window.__MJ_IS_IOS, isAndroid = window.__MJ_IS_ANDROID;
+
+  var isIOS = window.__MJ_IS_IOS;
+  var isAndroid = window.__MJ_IS_ANDROID;
+  var inApp = window.__MJ_IN_APP;
+
   var btn = document.getElementById('dlInstall');
   var status = document.getElementById('dlStatus');
-  var iosCard = document.getElementById('dlIos');
-  var andCard = document.getElementById('dlAnd');
+  var stepsBody = document.getElementById('dlStepsBody');
+  var stepsTitle = document.getElementById('dlStepsTitle');
+  var stepsCard = document.getElementById('dlSteps');
+  var inAppCard = document.getElementById('dlInApp');
+  var copyBtn = document.getElementById('dlCopy');
   var dlFile = document.getElementById('dlFile');
-  var dlPlay = document.getElementById('dlPlay');
-  var deferred = null;
+  var deferred = window.__MJ_BIP;
 
-  if (isIOS) { iosCard.style.display = ''; status.textContent = 'iOS 需要「添加到主屏幕」，看下面步骤'; }
-  else if (isAndroid) { andCard.style.display = ''; }
+  // 按平台生成步骤（始终显示，不依赖安装事件）
+  var steps;
+  if (inApp) {
+    stepsTitle.textContent = '先在浏览器里打开';
+    steps = '<ol>' +
+      '<li>点右上角 <b>···</b></li>' +
+      '<li>选 <b>在浏览器打开</b></li>' +
+      '<li>在 Chrome / Safari 里再点安装</li>' +
+      '</ol>';
+    inAppCard.style.display = '';
+    status.textContent = '当前是微信/QQ 内置浏览器，无法安装';
+    status.className = 'dl-status warn';
+  } else if (isIOS) {
+    stepsTitle.textContent = 'iPhone 安装步骤';
+    steps = '<ol>' +
+      '<li>点底部中间的 <b>分享</b> 按钮（方框带箭头）</li>' +
+      '<li>下滑，选择 <b>添加到主屏幕</b></li>' +
+      '<li>右上角点 <b>添加</b></li>' +
+      '<li>回桌面就有了麻将图标</li>' +
+      '</ol>';
+    status.textContent = 'iOS 只能用「添加到主屏幕」，按下面 3 步即可';
+  } else if (isAndroid) {
+    stepsTitle.textContent = 'Android 安装步骤';
+    steps = '<ol>' +
+      '<li>点上面的 <b>安装到桌面</b> → 弹窗选 <b>安装</b></li>' +
+      '<li>没弹窗就点浏览器右上角 <b>⋮</b> 菜单</li>' +
+      '<li>选 <b>安装应用</b> 或 <b>添加到主屏幕</b></li>' +
+      '<li>回桌面就有了麻将图标</li>' +
+      '</ol>';
+    status.textContent = '点上面的按钮；没弹窗就按下面 3 步操作';
+  } else {
+    stepsTitle.textContent = '安装到桌面（电脑）';
+    steps = '<ol>' +
+      '<li>地址栏右侧点 <b>安装</b> 图标</li>' +
+      '<li>或菜单 → <b>应用</b> → <b>安装此站点</b></li>' +
+      '</ol>';
+  }
+  stepsBody.innerHTML = steps;
 
-  // 下载按钮：把当前这个 html 原样保存
-  dlFile.href = location.pathname;
-  dlPlay.addEventListener('click', function (ev) {
+  // 复制网址（微信里用得上）
+  copyBtn.addEventListener('click', function (ev) {
     ev.preventDefault();
-    location.href = location.pathname + '?play=1';
+    var url = location.origin + location.pathname;
+    function done() { status.textContent = '网址已复制，粘贴到 Chrome / Safari 打开'; status.className = 'dl-status'; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(done, function () { prompt('复制这个网址：', url); });
+    } else {
+      prompt('复制这个网址：', url);
+    }
   });
 
-  window.addEventListener('beforeinstallprompt', function (e) {
-    e.preventDefault();
-    deferred = e;
-    status.textContent = '可以安装，点按钮即可';
-    status.className = 'dl-status';
-  });
-  window.addEventListener('appinstalled', function () {
-    status.textContent = '安装成功，回桌面看看图标吧';
-    btn.disabled = true;
-  });
-
+  // 安装按钮
   btn.addEventListener('click', function () {
+    if (inApp) {
+      status.textContent = '微信/QQ 里不能安装：点右上角 ··· → 在浏览器打开';
+      status.className = 'dl-status warn';
+      inAppCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     if (deferred) {
+      status.textContent = '正在唤起安装窗口…';
+      status.className = 'dl-status';
       deferred.prompt();
       deferred.userChoice.then(function (r) {
-        if (r.outcome === 'accepted') status.textContent = '正在安装…稍等，回桌面就能看到图标';
-        else { status.textContent = '已取消，也可以用下面的「添加到主屏幕」'; status.className = 'dl-status warn'; }
+        if (r.outcome === 'accepted') {
+          status.textContent = '正在安装，稍等，回桌面就能看到图标';
+        } else {
+          status.textContent = '已取消安装；也可以按下面的步骤手动添加';
+          status.className = 'dl-status warn';
+        }
         deferred = null;
+        window.__MJ_BIP = null;
       });
       return;
     }
-    if (isIOS) { status.textContent = '点底部「分享」→「添加到主屏幕」'; }
-    else if (isAndroid) { status.textContent = '用浏览器菜单里的「安装应用 / 添加到主屏幕」'; }
-    else { status.textContent = '地址栏右侧有安装图标，或用浏览器菜单里的「安装」'; }
+    // 没有安装事件：给明确反馈 + 滚到步骤
+    status.textContent = isIOS
+      ? 'iOS 请点底部「分享」→「添加到主屏幕」'
+      : (isAndroid ? '没弹出安装窗口，请按下面步骤手动添加' : '请用浏览器菜单里的「安装」');
     status.className = 'dl-status warn';
+    stepsCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
+
+  // 安装事件晚到时，更新提示
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferred = e;
+    window.__MJ_BIP = e;
+    if (!inApp) { status.textContent = '可以安装了，点上面的按钮'; status.className = 'dl-status'; }
+  });
+  window.addEventListener('appinstalled', function () {
+    status.textContent = '安装完成！回桌面看看麻将图标';
+    status.className = 'dl-status';
+    btn.disabled = true;
+    btn.textContent = '已 安 装';
+  });
+
+  // APK 不在仓库里就隐藏按钮（免得点出 404）
+  var apkBtn = document.getElementById('dlApk');
+  fetch('app-debug.apk', { method: 'HEAD' })
+    .then(function (r) { if (!r.ok) throw new Error('404'); })
+    .catch(function () {
+      if (apkBtn) {
+        apkBtn.style.display = 'none';
+        var tip = apkBtn.nextElementSibling;
+        if (tip) tip.textContent = 'APK 还没上传到仓库，先用下面的网页版或直接安装到桌面。';
+      }
+    });
+
+  // 下载按钮：用 Blob 生成完整单文件，文件名固定
+  dlFile.setAttribute('href', '#');
+  dlFile.addEventListener('click', function (ev) {
+    ev.preventDefault();
+    var html = '<!DOCTYPE html>' + String.fromCharCode(10) + document.documentElement.outerHTML;
+    var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = '双人麻将.html';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+    status.textContent = '已开始下载「双人麻将.html」';
+    status.className = 'dl-status';
+    setTimeout(function () {
+      status.textContent = '下载后请用 Firefox / 夸克 / Edge 打开（Chrome 不允许打开本地网页）';
+      status.className = 'dl-status warn';
+    }, 2500);
+  });
+
+  // 装成 App 之后，Service Worker 就绪时再踢一次安装判定
+  if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+    navigator.serviceWorker.ready.then(function (reg) {
+      if (reg && reg.update) reg.update();
+    }).catch(function () {});
+  }
 })();
 </script>
 `;
 
 /* ---------- 7) 组装 ---------- */
 html = html.replace('</head>', landingCss + decideScript + '</head>');
-html = html.replace(/<body>/, '<body>\n' + landingHtml);
-html = html.replace('</body>', landingJs + '\n</body>');
+const rotateHintHtml = `
+<div id="rotateHint">
+  <div class="rh-icon">📱</div>
+  <div class="rh-title">请把手机横过来</div>
+  <div class="rh-text">这个游戏是横屏操作的<br />横过来后会自动进入牌桌</div>
+  <button class="rh-btn" id="rhIgnore">继续竖屏游玩</button>
+</div>
+`;
+html = html.replace(/<body>/, '<body>\n' + landingHtml + rotateHintHtml);
+const rotateJs = `
+<script>
+(function () {
+  var ua = navigator.userAgent || '';
+  var mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+  var isFile = location.protocol === 'file:';
+  var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+    window.navigator.standalone === true;
+  var force = /[?&]rotate=1/.test(location.search);
+  // 只在「打开本地文件」或「装成 App」时强制横屏；网页版桌面/手机不受影响
+  if (!(mobile && (isFile || standalone)) && !force) return;
+
+  var body = document.body;
+  function check() {
+    if (body.classList.contains('mj-ignore-rotate')) return;
+    var portrait = window.innerHeight > window.innerWidth;
+    body.classList.toggle('mj-need-landscape', portrait);
+  }
+  check();
+  window.addEventListener('resize', check);
+  window.addEventListener('orientationchange', function () { setTimeout(check, 120); });
+  var btn = document.getElementById('rhIgnore');
+  if (btn) btn.addEventListener('click', function () {
+    body.classList.add('mj-ignore-rotate');
+    body.classList.remove('mj-need-landscape');
+  });
+})();
+</script>
+`;
+html = html.replace('</body>', landingJs + rotateJs + '\n</body>');
 
 const out = '上传这个-index.html';
 fs.writeFileSync(path.join(ROOT, out), html, 'utf8');
 console.log(out + ' 已生成：' + Math.round(fs.statSync(path.join(ROOT, out)).size / 1024) + ' KB');
 
 // 纯游戏单文件（给手机当附件发）
-let plain = read('index.html');
+let plain = read(fs.existsSync(path.join(ROOT, '游戏源.html')) ? '游戏源.html' : 'index.html');
 plain = plain.replace(/<link rel="stylesheet" href="([^"?]+)(\?[^"]*)?"\s*\/?>/g, (m, href) => (
   '<style>\n' + read(href) + '\n</style>'
 ));

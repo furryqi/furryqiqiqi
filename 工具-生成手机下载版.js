@@ -42,18 +42,11 @@ mf.start_url = './game.html';
 mf.orientation = 'landscape';
 write('manifest.webmanifest', JSON.stringify(mf, null, 2) + '\n');
 
-/* 4) sw.js：缓存这两个页面 */
+/* 4) sw.js：缓存这两个页面；缓存名自动 +1，保证手机端能拿到新版本 */
 let sw = read('sw.js');
-sw = sw.replace("const CACHE = 'mj2p-v2';", "const CACHE = 'mj2p-v3';");
-sw = sw.replace(
-  `const ASSETS = [
-  './',
-  './index.html',`,
-  `const ASSETS = [
-  './',
-  './index.html',
-  './game.html',`
-);
+sw = sw.replace(/const CACHE = '(mj2p-v\d+)';/, (m, v) => (
+  "const CACHE = '" + v.replace(/\d+$/, (n) => String(Number(n) + 1)) + "';"
+));
 write('sw.js', sw);
 
 /* 5) 图标 */
